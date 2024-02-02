@@ -4,9 +4,9 @@ package main
 
 import (
 	"flag"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"github.com/spf13/viper"
 	"log"
 	"os"
 )
@@ -28,10 +28,10 @@ func main() {
 	command := args[0]
 	log.Default().Printf("%v", command)
 
-	dbstring, exists := os.LookupEnv("DSN")
+	dbstring := viper.GetString("DSN")
 
-	if !exists {
-		log.Fatal("DB Connection string not set")
+	if dbstring == "" {
+		log.Fatalf("goose: missing DSN")
 	}
 
 	db, err := goose.OpenDBWithDriver("postgres", dbstring)
@@ -56,8 +56,15 @@ func main() {
 }
 
 func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("failed to load env", err)
+	projectRoot := "."
+	// Search config in home directory with name ".cobra.yaml".
+	viper.AddConfigPath(projectRoot)
+	viper.SetConfigType("yaml")
+	viper.SetConfigName(".cobra.yaml")
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err == nil {
+		log.Println("goose: using config file:", viper.ConfigFileUsed())
+	} else {
+		log.Fatal(err)
 	}
 }
