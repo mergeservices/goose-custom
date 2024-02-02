@@ -34,7 +34,7 @@ func main() {
 		log.Fatal("DB Connection string not set")
 	}
 
-	db, err := goose.OpenDBWithDriver("mysql", dbstring)
+	db, err := goose.OpenDBWithDriver("postgres", dbstring)
 	if err != nil {
 		log.Fatalf("goose: failed to open DB: %v\n", err)
 	}
