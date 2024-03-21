@@ -3,12 +3,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"log"
+	"os"
+
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/spf13/viper"
-	"log"
-	"os"
 )
 
 var (
@@ -17,7 +19,9 @@ var (
 )
 
 func main() {
-	flags.Parse(os.Args[1:])
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		log.Fatalf("goose: failed to parse flags: %v\n", err)
+	}
 	args := flags.Args()
 	log.Default().Printf("%v", args)
 	if len(args) < 1 {
@@ -28,10 +32,10 @@ func main() {
 	command := args[0]
 	log.Default().Printf("%v", command)
 
-	dbstring := viper.GetString("DSN")
+	dbstring := viper.GetString("dsn")
 
 	if dbstring == "" {
-		log.Fatalf("goose: missing DSN")
+		log.Fatalf("goose: missing dsn in config file\n")
 	}
 
 	db, err := goose.OpenDBWithDriver("postgres", dbstring)
@@ -50,7 +54,9 @@ func main() {
 		arguments = append(arguments, args[1:]...)
 	}
 
-	if err := goose.Run(command, db, *dir, arguments...); err != nil {
+	ctx := context.Background()
+
+	if err := goose.RunContext(ctx, command, db, *dir, arguments...); err != nil {
 		log.Fatalf("goose %v: %v", command, err)
 	}
 }
@@ -60,11 +66,9 @@ func init() {
 	// Search config in home directory with name ".cobra.yaml".
 	viper.AddConfigPath(projectRoot)
 	viper.SetConfigType("yaml")
-	viper.SetConfigName(".cobra.yaml")
+	viper.SetConfigName("goose.yaml")
 	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err == nil {
-		log.Println("goose: using config file:", viper.ConfigFileUsed())
-	} else {
-		log.Fatal(err)
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("goose: please create a config file in the root of your project called goose.yaml\n")
 	}
 }
